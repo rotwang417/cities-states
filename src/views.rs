@@ -1,8 +1,8 @@
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum View {
     Menu,
-    Option1,
-    Option2,
+    NumberOfTurnsView,
+    GameView,
 }
 
 impl Default for View {

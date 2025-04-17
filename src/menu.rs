@@ -1,6 +1,6 @@
 use iced::{Application, Command, Element, Length};
 use iced::alignment::{Horizontal, Vertical};
-use iced::widget::{Button, Column, Container, Text, TextInput};
+use iced::widget::{Button, Column, Container, Row, Text, TextInput};
 use iced::widget::image;
 use iced::Length::{Fill, Shrink};
 use crate::messages::{Message, MenuMessage};
@@ -10,6 +10,7 @@ use crate::views::{MainMenu, View};
 pub struct MainMenuApp {
     pub current_view: View,
     pub input_value: String,
+    pub number_of_turns: usize,
 }
 
 impl Application for MainMenuApp {
@@ -32,12 +33,11 @@ impl Application for MainMenuApp {
             Message::Menu(menu_message) => match menu_message {
                 MenuMessage::Select(option) => match option {
                     MainMenu::Option1 => {
-                        self.current_view = View::Option1;
+                        self.current_view = View::NumberOfTurnsView;
                         return Command::none();
                     }
                     MainMenu::Option2 => {
-                        self.current_view = View::Option2;
-                        return Command::none();
+                        todo!()
                     }
                     MainMenu::Option3 => {
                         std::process::exit(0);
@@ -48,10 +48,15 @@ impl Application for MainMenuApp {
                 self.input_value = new_value;
                 Command::none()
             }
-            Message::SubmitInput => {
-                println!("Number of players: {}", self.input_value);
-                self.current_view = View::Menu;
+            Message::NumberOfTurns => {
+                if let Ok(num) = self.input_value.trim().parse() {
+                    self.number_of_turns = num;
+                    self.current_view = View::GameView;
+                }
                 Command::none()
+                // println!("Number of turns: {}", self.input_value);
+                // self.current_view = View::Menu;
+                // Command::none()
             }
             Message::BackToMainMenu => {
                 self.current_view = View::Menu;
@@ -63,8 +68,8 @@ impl Application for MainMenuApp {
     fn view(&self) -> Element<Self::Message> {
         match self.current_view {
             View::Menu => self.view_menu(),
-            View::Option1 => self.view_single_player_setup(),
-            View::Option2 => todo!()
+            View::NumberOfTurnsView => self.view_single_player_setup(),
+            View::GameView => self.view_game_tables()
         }
     }
 }
@@ -126,7 +131,7 @@ impl MainMenuApp {
 
     fn view_single_player_setup(&self) -> Element<Message> {
         let input = TextInput::new(
-            "How many players?",
+            "How many turns?",
             &self.input_value)
             .on_input(Message::InputChanged
         )
@@ -134,13 +139,13 @@ impl MainMenuApp {
             .size(20);
 
         let submit_button = Button::new(Text::new("Submit"))
-            .on_press(Message::SubmitInput);
+            .on_press(Message::NumberOfTurns);
 
         let back_button = Button::new(Text::new("Back"))
             .on_press(Message::BackToMainMenu);
 
         let dialog = Column::new()
-            .push(Text::new("Single Player Mode"))
+            .push(Text::new("Number of turns"))
             .push(input)
             .push(submit_button)
             .push(back_button)
@@ -149,6 +154,33 @@ impl MainMenuApp {
             .align_items(iced::Alignment::Center);
 
         Container::new(dialog)
+            .center_x()
+            .center_y()
+            .into()
+    }
+
+    fn view_game_tables(&self) -> Element<Message> {
+        let mut columns = Column::new().spacing(30);
+
+        for player_id in 0..3 {
+            let mut table = Column::new().spacing(5);
+            table = table.push(Text::new(format!("Player {}", player_id)));
+
+            for _ in 0.. self.number_of_turns {
+                let row = Row::new()
+                    .spacing(10)
+                    .push(Text::new("A"))
+                    .push(Text::new("B"))
+                    .push(Text::new("C"))
+                    .push(Text::new("D"))
+                    .push(Text::new("E"));
+                table = table.push(row);
+            }
+            columns = columns.push(table);
+        }
+
+        Container::new(columns)
+            .padding(20)
             .center_x()
             .center_y()
             .into()

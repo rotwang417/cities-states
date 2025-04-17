@@ -4,7 +4,7 @@ use crate::views::MainMenu;
 pub enum Message {
     Menu(MenuMessage),
     InputChanged(String),
-    SubmitInput,
+    NumberOfTurns,
     BackToMainMenu,
 }
 
