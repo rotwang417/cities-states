@@ -1,6 +1,6 @@
 use iced::{Application, Command, Element, Length};
 use iced::alignment::{Horizontal, Vertical};
-use iced::widget::{Button, Column, Container, Row, Text, TextInput};
+use iced::widget::{Button, Column, Container, Row, Scrollable, Text, TextInput};
 use iced::widget::image;
 use iced::Length::{Fill, Shrink};
 use crate::messages::{Message, MenuMessage};
@@ -160,15 +160,27 @@ impl MainMenuApp {
     }
 
     fn view_game_tables(&self) -> Element<Message> {
+
+        // hardcoded value to development
+        let num_of_players = 3;
         let mut columns = Column::new().spacing(30);
 
-        for player_id in 0..3 {
+        for player_id in 1..=num_of_players {
             let mut table = Column::new().spacing(5);
             table = table.push(Text::new(format!("Player {}", player_id)));
 
-            for _ in 0.. self.number_of_turns {
+            let header_row = Row::new()
+                .spacing(10)
+                .push(Text::new("City"))
+                .push(Text::new("State"))
+                .push(Text::new("Plant"))
+                .push(Text::new("Animal"))
+                .push(Text::new("River"));
+                table = table.push(header_row);
+
+            for _ in 1..=self.number_of_turns {
                 let row = Row::new()
-                    .spacing(10)
+                    .spacing(35)
                     .push(Text::new("A"))
                     .push(Text::new("B"))
                     .push(Text::new("C"))
@@ -178,8 +190,12 @@ impl MainMenuApp {
             }
             columns = columns.push(table);
         }
+        
+        let scroll_view = Scrollable::new(columns)
+            .width(Length::Fill)
+            .height(Length::Fill);
 
-        Container::new(columns)
+        Container::new(scroll_view)
             .padding(20)
             .center_x()
             .center_y()
