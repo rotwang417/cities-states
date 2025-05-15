@@ -6,6 +6,9 @@ pub enum Message {
     InputChanged(String),
     NumberOfTurns,
     BackToMainMenu,
+    PlayerInputChanged { row: usize, col: usize, value: String },
+    RandomWordsFetched(Vec<Vec<Vec<String>>>),
+
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -3,6 +3,7 @@ pub enum View {
     Menu,
     NumberOfTurnsView,
     GameView,
+    GameTables,
 }
 
 impl Default for View {

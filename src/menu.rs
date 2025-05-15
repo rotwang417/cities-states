@@ -3,14 +3,30 @@ use iced::alignment::{Horizontal, Vertical};
 use iced::widget::{Button, Column, Container, Row, Scrollable, Text, TextInput};
 use iced::widget::image;
 use iced::Length::{Fill, Shrink};
+use crate::database::fetch_random_word;
 use crate::messages::{Message, MenuMessage};
 use crate::views::{MainMenu, View};
 
-#[derive(Default)]
+// #[derive(Default)]
 pub struct MainMenuApp {
     pub current_view: View,
     pub input_value: String,
     pub number_of_turns: usize,
+    pub fetched_words: Vec<Vec<Vec<String>>>,
+    pub player_inputs: Vec<Vec<String>>,
+}
+
+impl Default for MainMenuApp {
+    fn default() -> Self {
+        Self {
+            current_view: View::Menu,
+            input_value: String::new(),
+            number_of_turns: 0,
+            fetched_words: Vec::new(),
+            player_inputs: Vec::new(),
+
+        }
+    }
 }
 
 impl Application for MainMenuApp {
@@ -49,18 +65,42 @@ impl Application for MainMenuApp {
                 Command::none()
             }
             Message::NumberOfTurns => {
-                if let Ok(num) = self.input_value.trim().parse() {
-                    self.number_of_turns = num;
-                    self.current_view = View::GameView;
+                if let Ok(n) = self.input_value.parse::<usize>() {
+                    self.number_of_turns = n;
+                    self.input_value.clear();
+
+                    // Generate words for players 1 and 2
+                    let mut generated = vec![vec![]; 3]; // 3 players
+                    for player in 1..3 {
+                        for _ in 0..self.number_of_turns {
+                            let mut row = Vec::new();
+                            for _ in 0..5 {
+                                // Dummy value; replace with DB call if needed
+                                let word = fetch_random_word().unwrap_or_else(|_| "???".to_string());
+                                row.push(word);
+                            }
+                            generated[player].push(row);
+                        }
+                    }
+                    return Command::perform(async { generated }, |result| Message::RandomWordsFetched(result));
                 }
+
                 Command::none()
-                // println!("Number of turns: {}", self.input_value);
-                // self.current_view = View::Menu;
-                // Command::none()
             }
             Message::BackToMainMenu => {
                 self.current_view = View::Menu;
                 return Command::none();
+            },
+            Message::PlayerInputChanged { row, col, value } => {
+                if row < self.player_inputs.len() && col < self.player_inputs[row].len() {
+                    self.player_inputs[row][col] = value;
+                }
+                Command::none()
+            },
+            Message::RandomWordsFetched(words) => {
+                self.fetched_words = words;
+                self.current_view = View::GameTables;
+                Command::none()
             }
         }
     }
@@ -69,7 +109,8 @@ impl Application for MainMenuApp {
         match self.current_view {
             View::Menu => self.view_menu(),
             View::NumberOfTurnsView => self.view_single_player_setup(),
-            View::GameView => self.view_game_tables()
+            View::GameView => self.view_game_tables(),
+            View::GameTables => self.view_game_tables(),
         }
     }
 }
@@ -134,7 +175,7 @@ impl MainMenuApp {
             "How many turns?",
             &self.input_value)
             .on_input(Message::InputChanged
-        )
+            )
             .padding(10)
             .size(20);
 
@@ -160,42 +201,71 @@ impl MainMenuApp {
     }
 
     fn view_game_tables(&self) -> Element<Message> {
+        let number_of_players = 3;
+        let mut player_columns = Row::new().spacing(20);
 
-        // hardcoded value to development
-        let num_of_players = 3;
-        let mut columns = Column::new().spacing(30);
-
-        for player_id in 1..=num_of_players {
-            let mut table = Column::new().spacing(5);
-            table = table.push(Text::new(format!("Player {}", player_id)));
+        for player_index in 0..number_of_players {
+            let mut table = Column::new()
+                .push(Text::new(format!("Player {}", player_index)).size(24))
+                .spacing(10);
 
             let header_row = Row::new()
                 .spacing(10)
-                .push(Text::new("City"))
-                .push(Text::new("State"))
-                .push(Text::new("Plant"))
-                .push(Text::new("Animal"))
-                .push(Text::new("River"));
-                table = table.push(header_row);
+                .push(Text::new("Country").size(16))
+                .push(Text::new("City").size(16))
+                .push(Text::new("Plant").size(16))
+                .push(Text::new("Animal").size(16))
+                .push(Text::new("River").size(16));
 
-            for _ in 1..=self.number_of_turns {
-                let row = Row::new()
-                    .spacing(35)
-                    .push(Text::new("A"))
-                    .push(Text::new("B"))
-                    .push(Text::new("C"))
-                    .push(Text::new("D"))
-                    .push(Text::new("E"));
+            table = table.push(header_row);
+
+            for row_index in 0..self.number_of_turns {
+                let mut row = Row::new().spacing(10);
+
+                for col_index in 0..5 {
+                    if player_index == 0 {
+                        // Editable for player 0
+                        let value = self.player_inputs
+                            .get(row_index)
+                            .and_then(|r| r.get(col_index))
+                            .cloned()
+                            .unwrap_or_default();
+
+                        row = row.push(
+                            TextInput::new("Input", &value)
+                                .on_input(move |v| Message::PlayerInputChanged {
+                                    row: row_index,
+                                    col: col_index,
+                                    value: v,
+                                })
+                                .padding(5)
+                                .size(16)
+                                .width(Length::Fixed(80.0)),
+                        );
+                    } else {
+                        // Static text for players 1 and 2 from fetched_words
+                        let text = self.fetched_words
+                            .get(player_index - 1) // -1 because fetched_words has only players 1 and 2
+                            .and_then(|rows| rows.get(row_index))
+                            .and_then(|cols| cols.get(col_index))
+                            .cloned()
+                            .unwrap_or_else(|| "-".to_string());
+
+                        row = row.push(Text::new(text).size(16));
+                    }
+                }
+
                 table = table.push(row);
             }
-            columns = columns.push(table);
+
+            player_columns = player_columns.push(table);
         }
-        
-        let scroll_view = Scrollable::new(columns)
+
+        let scrollable = iced::widget::Scrollable::new(player_columns)
             .width(Length::Fill)
             .height(Length::Fill);
 
-        Container::new(scroll_view)
+        Container::new(scrollable)
             .padding(20)
             .center_x()
             .center_y()
